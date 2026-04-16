@@ -1,6 +1,7 @@
 package iptables_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/nangm/iptables-lab/internal/iptables"
@@ -137,5 +138,37 @@ func TestErrorHandling(t *testing.T) {
 	// Missing target
 	if _, err := c.Execute("iptables -A INPUT -p tcp"); err == nil {
 		t.Error("expected error for missing target")
+	}
+}
+
+func TestStateToSave(t *testing.T) {
+	c := iptables.NewMockClient()
+	c.Execute("iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT")
+	c.Execute("iptables -A INPUT -i lo -j ACCEPT")
+	c.Execute("iptables -A INPUT -p tcp --dport 22 -j ACCEPT")
+	c.Execute("iptables -A INPUT -p tcp --dport 80 -j ACCEPT")
+	c.Execute("iptables -A INPUT -p icmp -j ACCEPT")
+	c.Execute("iptables -P INPUT DROP")
+	c.Execute("iptables -P FORWARD DROP")
+	c.Execute("iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE")
+	c.Execute("iptables -t nat -A PREROUTING -p tcp --dport 8080 -j DNAT --to-destination 192.168.1.10:80")
+
+	out := iptables.StateToSave(c.GetState())
+	t.Log("\n" + out)
+
+	checks := map[string]string{
+		"*filter":    "filter 테이블 없음",
+		":INPUT DROP": "INPUT DROP 정책 없음",
+		"-A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT": "state 규칙 없음",
+		"-A INPUT -p tcp --dport 22 -j ACCEPT":                    "SSH 규칙 없음",
+		"*nat":                           "nat 테이블 없음",
+		"-A POSTROUTING -o eth0 -j MASQUERADE": "MASQUERADE 없음",
+		"--to-destination 192.168.1.10:80":     "DNAT 없음",
+		"COMMIT":                               "COMMIT 없음",
+	}
+	for needle, msg := range checks {
+		if !strings.Contains(out, needle) {
+			t.Error(msg)
+		}
 	}
 }

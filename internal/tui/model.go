@@ -14,10 +14,11 @@ import (
 const (
 	tabRules   = 0
 	tabHistory = 1
-	tabStudy   = 2
+	tabConf    = 2
+	tabStudy   = 3
 )
 
-var tabNames = []string{"1 Rules", "2 History", "3 Study"}
+var tabNames = []string{"1 Rules", "2 History", "3 Conf", "4 Study"}
 
 // Config holds startup configuration.
 type Config struct {
@@ -55,6 +56,9 @@ type Model struct {
 	// History view
 	histSel    int // selected history entry
 	histScroll int
+
+	// Conf view
+	confScroll int
 
 	// Study
 	st *studyState
@@ -152,6 +156,10 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.input.Focus()
 			return m, textinput.Blink
 		case "3":
+			m.activeTab = tabConf
+			m.input.Focus()
+			return m, textinput.Blink
+		case "4":
 			m.activeTab = tabStudy
 			m.input.Focus()
 			return m, textinput.Blink
@@ -411,6 +419,10 @@ func (m *Model) scrollUp() {
 		if m.histScroll > 0 {
 			m.histScroll--
 		}
+	case tabConf:
+		if m.confScroll > 0 {
+			m.confScroll--
+		}
 	case tabStudy:
 		if m.st.scroll > 0 {
 			m.st.scroll--
@@ -424,6 +436,8 @@ func (m *Model) scrollDown() {
 		m.scroll++
 	case tabHistory:
 		m.histScroll++
+	case tabConf:
+		m.confScroll++
 	case tabStudy:
 		m.st.scroll++
 	}
@@ -545,12 +559,14 @@ func (m *Model) viewInputBar() string {
 	var hint string
 	switch m.activeTab {
 	case tabRules:
-		hint = "Tab:탭전환  ←→:체인이동  ↑↓:스크롤  Enter:실행  reset:초기화  q:종료"
+		hint = "Tab:탭전환  ←→:체인이동  ↑↓:히스토리/스크롤  Enter:실행  reset:초기화  q:종료"
 	case tabHistory:
-		hint = "Tab:탭전환  ↑↓:이력선택  Enter:실행  q:종료"
+		hint = "Tab:탭전환  ↑↓:히스토리탐색  Enter:실행  q:종료"
+	case tabConf:
+		hint = "Tab:탭전환  j/k:스크롤  Enter:실행  q:종료"
 	case tabStudy:
 		if m.st.taskMode {
-			hint = "Enter:실행  Esc:나가기  s:정답보기"
+			hint = "Enter:실행  ↑↓:히스토리탐색  Esc:나가기  s:정답보기"
 		} else {
 			hint = "Tab:탭전환  p/n:이전/다음레슨  t:실습시작  q:종료"
 		}

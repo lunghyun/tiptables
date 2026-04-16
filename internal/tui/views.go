@@ -22,6 +22,8 @@ func (m *Model) viewContent() string {
 		return m.viewRules(inner)
 	case tabHistory:
 		return m.viewHistory(inner)
+	case tabConf:
+		return m.viewConf(inner)
 	case tabStudy:
 		return m.viewStudy(inner)
 	}
@@ -158,6 +160,146 @@ func formatOpts(r *iptables.Rule) string {
 		parts = append(parts, k+":"+r.Options[k])
 	}
 	return strings.Join(parts, "  ")
+}
+
+// ─── Conf Tab ────────────────────────────────────────────────────────────────
+
+func (m *Model) viewConf(width int) string {
+	save := iptables.StateToSave(m.client.GetState())
+	raw := strings.Split(save, "\n")
+
+	// Syntax highlight each line
+	var lines []string
+	lines = append(lines,
+		styleHeader.Render("  /etc/sysconfig/iptables"),
+		styleMuted.Render("  "+strings.Repeat("─", min(width-2, 50))),
+		"",
+	)
+
+	for _, line := range raw {
+		lines = append(lines, "  "+highlightConfLine(line))
+	}
+
+	// Apply scroll
+	if m.confScroll >= len(lines) {
+		m.confScroll = max(0, len(lines)-1)
+	}
+	visible := lines
+	if m.confScroll < len(lines) {
+		visible = lines[m.confScroll:]
+	}
+	return strings.Join(visible, "\n")
+}
+
+// highlightConfLine applies syntax coloring to a single iptables-save line.
+func highlightConfLine(line string) string {
+	switch {
+	case line == "":
+		return ""
+	case strings.HasPrefix(line, "#"):
+		return styleMuted.Render(line)
+	case strings.HasPrefix(line, "*"):
+		// *filter, *nat, *mangle, *raw
+		return stylePrimary.Bold(true).Render(line)
+	case strings.HasPrefix(line, ":"):
+		// :INPUT ACCEPT [0:0]
+		parts := strings.SplitN(line, " ", 3)
+		chain := styleChainBadge.Render(parts[0])
+		rest := ""
+		if len(parts) > 1 {
+			policy := parts[1]
+			switch policy {
+			case "ACCEPT":
+				rest = " " + styleSuccess.Render(policy)
+			case "DROP":
+				rest = " " + styleError.Render(policy)
+			default:
+				rest = " " + styleMuted.Render(policy)
+			}
+		}
+		if len(parts) > 2 {
+			rest += " " + styleMuted.Render(parts[2])
+		}
+		return chain + rest
+	case strings.HasPrefix(line, "-A"):
+		// -A CHAIN ... -j TARGET
+		return highlightRuleLine(line)
+	case line == "COMMIT":
+		return styleWarning.Render(line)
+	default:
+		return styleBase.Render(line)
+	}
+}
+
+// highlightRuleLine colors a -A rule line token by token.
+func highlightRuleLine(line string) string {
+	tokens := strings.Fields(line)
+	var out []string
+	i := 0
+	for i < len(tokens) {
+		tok := tokens[i]
+		switch tok {
+		case "-A":
+			out = append(out, styleMuted.Render("-A"))
+			if i+1 < len(tokens) {
+				i++
+				out = append(out, styleChainBadge.Render(tokens[i]))
+			}
+		case "-j":
+			out = append(out, styleMuted.Render("-j"))
+			if i+1 < len(tokens) {
+				i++
+				out = append(out, colorTarget(tokens[i]))
+			}
+		case "-p":
+			out = append(out, styleMuted.Render("-p"))
+			if i+1 < len(tokens) {
+				i++
+				out = append(out, styleWarning.Render(tokens[i]))
+			}
+		case "-s", "-d":
+			out = append(out, styleMuted.Render(tok))
+			if i+1 < len(tokens) {
+				i++
+				out = append(out, stylePrimary.Render(tokens[i]))
+			}
+		case "-i", "-o":
+			out = append(out, styleMuted.Render(tok))
+			if i+1 < len(tokens) {
+				i++
+				out = append(out, styleBase.Render(tokens[i]))
+			}
+		case "--dport", "--sport", "--dports", "--sports", "--state",
+			"--to-destination", "--to-source", "--log-prefix",
+			"--icmp-type", "--limit", "--reject-with":
+			out = append(out, styleMuted.Render(tok))
+			if i+1 < len(tokens) {
+				i++
+				out = append(out, styleSuccess.Render(tokens[i]))
+			}
+		case "-m":
+			out = append(out, styleMuted.Render("-m"))
+			if i+1 < len(tokens) {
+				i++
+				out = append(out, styleMuted.Italic(true).Render(tokens[i]))
+			}
+		default:
+			if strings.HasPrefix(tok, "--") {
+				out = append(out, styleMuted.Render(tok))
+			} else {
+				out = append(out, styleBase.Render(tok))
+			}
+		}
+		i++
+	}
+	return strings.Join(out, " ")
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 // ─── History Tab ─────────────────────────────────────────────────────────────
