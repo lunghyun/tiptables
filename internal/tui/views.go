@@ -90,10 +90,21 @@ func (m *Model) viewRules(width int) string {
 func (m *Model) renderRulesTable(chain *iptables.Chain, width int) []string {
 	var lines []string
 
-	header := styleHeader.Render(fmt.Sprintf(
-		"%-4s  %-12s  %-6s  %-18s  %-18s  %s",
-		"#", "TARGET", "PROT", "SOURCE", "DEST", "OPTIONS",
-	))
+	// fmt.Sprintf 패딩은 ANSI 코드를 일반 문자로 세기 때문에 헤더에만 사용하고,
+	// 데이터 행은 lipgloss Width()로 시각적 너비를 보장한다.
+	header := lipgloss.JoinHorizontal(lipgloss.Left,
+		styleHeader.Width(4).Render("#"),
+		styleHeader.Render("  "),
+		styleHeader.Width(12).Render("TARGET"),
+		styleHeader.Render("  "),
+		styleHeader.Width(6).Render("PROT"),
+		styleHeader.Render("  "),
+		styleHeader.Width(18).Render("SOURCE"),
+		styleHeader.Render("  "),
+		styleHeader.Width(18).Render("DEST"),
+		styleHeader.Render("  "),
+		styleHeader.Render("OPTIONS"),
+	)
 	lines = append(lines, header)
 	lines = append(lines, styleSeparator.Render(strings.Repeat("─", min(width, 80))))
 
@@ -102,8 +113,6 @@ func (m *Model) renderRulesTable(chain *iptables.Chain, width int) []string {
 	}
 
 	for _, r := range chain.Rules {
-		num := styleRuleNum.Render(fmt.Sprintf("%d", r.Num))
-		tgt := colorTarget(r.Target)
 		src := r.Source
 		if src == "" {
 			src = "0.0.0.0/0"
@@ -113,15 +122,18 @@ func (m *Model) renderRulesTable(chain *iptables.Chain, width int) []string {
 			dst = "0.0.0.0/0"
 		}
 
-		opts := formatOpts(r)
-
-		line := fmt.Sprintf("%s  %-12s  %-6s  %-18s  %-18s  %s",
-			num,
-			tgt,
-			styleMuted.Render(r.Proto),
-			styleBase.Render(src),
-			styleBase.Render(dst),
-			styleMuted.Render(opts),
+		line := lipgloss.JoinHorizontal(lipgloss.Left,
+			styleRuleNum.Width(4).Render(fmt.Sprintf("%d", r.Num)),
+			"  ",
+			colorTarget(r.Target), // already Width(12)
+			"  ",
+			styleMuted.Width(6).Render(r.Proto),
+			"  ",
+			styleBase.Width(18).Render(src),
+			"  ",
+			styleBase.Width(18).Render(dst),
+			"  ",
+			styleMuted.Render(formatOpts(r)),
 		)
 		lines = append(lines, line)
 	}
@@ -231,6 +243,23 @@ func highlightConfLine(line string) string {
 	}
 }
 
+// colorTargetPlain colorizes a target keyword without fixed column width.
+// Used in the Conf view where column alignment is not needed.
+func colorTargetPlain(target string) string {
+	switch strings.ToUpper(target) {
+	case "ACCEPT":
+		return styleSuccess.Render(target)
+	case "DROP", "REJECT":
+		return styleError.Render(target)
+	case "LOG":
+		return styleWarning.Render(target)
+	case "MASQUERADE", "DNAT", "SNAT":
+		return stylePolicy.Render(target)
+	default:
+		return stylePrimary.Render(target)
+	}
+}
+
 // highlightRuleLine colors a -A rule line token by token.
 func highlightRuleLine(line string) string {
 	tokens := strings.Fields(line)
@@ -249,7 +278,7 @@ func highlightRuleLine(line string) string {
 			out = append(out, styleMuted.Render("-j"))
 			if i+1 < len(tokens) {
 				i++
-				out = append(out, colorTarget(tokens[i]))
+				out = append(out, colorTargetPlain(tokens[i]))
 			}
 		case "-p":
 			out = append(out, styleMuted.Render("-p"))
@@ -578,7 +607,7 @@ func (m *Model) viewHelp() string {
   tiptables — 도움말
 
   ── 탭 전환 ──────────────────────────────
-  Tab / 1 / 2 / 3    탭 전환 (Rules / History / Study)
+  Tab / 1 / 2 / 3 / 4    탭 전환 (Rules / History / Conf / Study)
 
   ── 명령어 입력 ──────────────────────────
   Enter              명령어 실행

@@ -546,7 +546,7 @@ func (m *Model) viewHeader() string {
 	help := styleMuted.Render("? help")
 
 	right := lipgloss.JoinHorizontal(lipgloss.Right, mode, help)
-	gap := m.width - lipgloss.Width(title) - lipgloss.Width(tabRow) - lipgloss.Width(right)
+	gap := m.width - lipgloss.Width(title) - 2 - lipgloss.Width(tabRow) - lipgloss.Width(right)
 	if gap < 1 {
 		gap = 1
 	}

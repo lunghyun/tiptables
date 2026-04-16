@@ -9,7 +9,7 @@ import (
 	"github.com/nangm/iptables-lab/internal/tui"
 )
 
-const version = "0.1.0"
+const version = "0.0.4"
 
 func main() {
 	var (

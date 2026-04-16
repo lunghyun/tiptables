@@ -80,10 +80,3 @@ var (
 	styleTaskDone    = lipgloss.NewStyle().Foreground(colorSuccess).Bold(true)
 	styleTaskPending = lipgloss.NewStyle().Foreground(colorWarning)
 )
-
-func sep(width int) string {
-	if width <= 0 {
-		width = 40
-	}
-	return styleSeparator.Render(lipgloss.NewStyle().Width(width).Render(""))
-}
