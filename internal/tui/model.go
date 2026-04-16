@@ -64,6 +64,11 @@ type Model struct {
 	inputMsg string
 	inputOK  bool // true = success, false = error
 
+	// Command history (bash-style ↑↓ navigation)
+	cmdHistory []string
+	historyPos int    // -1 = not navigating
+	savedInput string // input saved before navigating history
+
 	// Help overlay
 	showHelp bool
 }
@@ -78,9 +83,10 @@ func New(cfg Config) *Model {
 
 	lessons := study.All()
 	m := &Model{
-		client:    iptables.NewMockClient(),
-		input:     ti,
-		activeTab: tabRules,
+		client:     iptables.NewMockClient(),
+		input:      ti,
+		activeTab:  tabRules,
+		historyPos: -1,
 		st: &studyState{
 			lessons:    lessons,
 			lessonIdx:  0,
@@ -179,13 +185,53 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Arrow keys for scrolling (when input empty)
+	// ↑↓ 화살표: 입력창에 포커스가 있으면 명령어 히스토리 탐색
+	if msg.Type == tea.KeyUp {
+		if len(m.cmdHistory) > 0 {
+			if m.historyPos == -1 {
+				// 탐색 시작: 현재 입력 저장
+				m.savedInput = m.input.Value()
+				m.historyPos = len(m.cmdHistory) - 1
+			} else if m.historyPos > 0 {
+				m.historyPos--
+			}
+			m.input.SetValue(m.cmdHistory[m.historyPos])
+			m.input.CursorEnd()
+		}
+		return m, nil
+	}
+	if msg.Type == tea.KeyDown {
+		if m.historyPos != -1 {
+			m.historyPos++
+			if m.historyPos >= len(m.cmdHistory) {
+				// 끝까지 내려오면 저장해둔 입력 복원
+				m.historyPos = -1
+				m.input.SetValue(m.savedInput)
+				m.input.CursorEnd()
+			} else {
+				m.input.SetValue(m.cmdHistory[m.historyPos])
+				m.input.CursorEnd()
+			}
+		} else if m.input.Value() == "" {
+			// 입력이 비어있고 히스토리 탐색 중이 아닐 때만 스크롤
+			m.scrollDown()
+		}
+		return m, nil
+	}
+
+	// 히스토리 탐색 중 다른 키 입력 시 탐색 종료
+	if m.historyPos != -1 && msg.Type != tea.KeyUp && msg.Type != tea.KeyDown {
+		m.historyPos = -1
+		m.savedInput = ""
+	}
+
+	// Arrow keys for scrolling (when input empty, not up/down which are handled above)
 	if m.input.Value() == "" {
 		switch msg.String() {
-		case "up", "k":
+		case "k":
 			m.scrollUp()
 			return m, nil
-		case "down", "j":
+		case "j":
 			m.scrollDown()
 			return m, nil
 		case "left", "h":
@@ -243,6 +289,15 @@ func (m *Model) executeCommand() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	m.input.SetValue("")
+
+	// 히스토리 탐색 상태 초기화
+	m.historyPos = -1
+	m.savedInput = ""
+
+	// 명령어 히스토리에 저장 (중복 연속 입력 제외)
+	if len(m.cmdHistory) == 0 || m.cmdHistory[len(m.cmdHistory)-1] != raw {
+		m.cmdHistory = append(m.cmdHistory, raw)
+	}
 
 	// Special commands
 	switch strings.ToLower(raw) {
