@@ -31,25 +31,25 @@ iptables를 루트 권한 없이 배울 수 있는 인터랙티브 터미널 학
 
 ```bash
 # Linux (amd64)
-curl -L https://github.com/lunghyun/iptables-lab/releases/download/v0.0.1/iptables-lab_linux_amd64 -o iptables-lab
-chmod +x iptables-lab
-./iptables-lab
+curl -L https://github.com/lunghyun/tiptables/releases/download/v0.0.1/tiptables_linux_amd64 -o tiptables
+chmod +x tiptables
+./tiptables
 ```
 
 ```bash
 # macOS (Apple Silicon)
-curl -L https://github.com/lunghyun/iptables-lab/releases/download/v0.0.1/iptables-lab_darwin_arm64 -o iptables-lab
-chmod +x iptables-lab
-./iptables-lab
+curl -L https://github.com/lunghyun/tiptables/releases/download/v0.0.1/tiptables_darwin_arm64 -o tiptables
+chmod +x tiptables
+./tiptables
 ```
 
 ### Go로 빌드
 
 ```bash
-git clone https://github.com/lunghyun/iptables-lab.git
-cd iptables-lab
-go build -o iptables-lab .
-./iptables-lab
+git clone https://github.com/lunghyun/tiptables.git
+cd tiptables
+go build -o tiptables .
+./tiptables
 ```
 
 ## 사용법
