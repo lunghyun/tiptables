@@ -243,6 +243,23 @@ func highlightConfLine(line string) string {
 	}
 }
 
+// colorTargetPlain colorizes a target keyword without fixed column width.
+// Used in the Conf view where column alignment is not needed.
+func colorTargetPlain(target string) string {
+	switch strings.ToUpper(target) {
+	case "ACCEPT":
+		return styleSuccess.Render(target)
+	case "DROP", "REJECT":
+		return styleError.Render(target)
+	case "LOG":
+		return styleWarning.Render(target)
+	case "MASQUERADE", "DNAT", "SNAT":
+		return stylePolicy.Render(target)
+	default:
+		return stylePrimary.Render(target)
+	}
+}
+
 // highlightRuleLine colors a -A rule line token by token.
 func highlightRuleLine(line string) string {
 	tokens := strings.Fields(line)
@@ -261,7 +278,7 @@ func highlightRuleLine(line string) string {
 			out = append(out, styleMuted.Render("-j"))
 			if i+1 < len(tokens) {
 				i++
-				out = append(out, colorTarget(tokens[i]))
+				out = append(out, colorTargetPlain(tokens[i]))
 			}
 		case "-p":
 			out = append(out, styleMuted.Render("-p"))
