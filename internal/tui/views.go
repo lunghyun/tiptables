@@ -575,7 +575,7 @@ func (m *Model) viewTask(lesson *study.Lesson, width int) []string {
 
 func (m *Model) viewHelp() string {
 	content := `
-  iptables-lab — 도움말
+  tiptables — 도움말
 
   ── 탭 전환 ──────────────────────────────
   Tab / 1 / 2 / 3    탭 전환 (Rules / History / Study)

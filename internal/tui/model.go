@@ -541,7 +541,7 @@ func (m *Model) viewHeader() string {
 	}
 
 	mode := styleMuted.Render(" [MOCK] ")
-	title := styleTitle.Render("iptables-lab")
+	title := styleTitle.Render("tiptables")
 	tabRow := lipgloss.JoinHorizontal(lipgloss.Left, tabs...)
 	help := styleMuted.Render("? help")
 

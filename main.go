@@ -17,10 +17,10 @@ func main() {
 		showVer   = flag.Bool("version", false, "버전 출력")
 	)
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, `iptables-lab v%s — iptables 학습 시뮬레이터
+		fmt.Fprintf(os.Stderr, `tiptables v%s — iptables 학습 시뮬레이터
 
 사용법:
-  iptables-lab [옵션]
+  tiptables [옵션]
 
 옵션:
   -study     학습 모드로 바로 시작
@@ -41,7 +41,7 @@ func main() {
 	flag.Parse()
 
 	if *showVer {
-		fmt.Printf("iptables-lab v%s\n", version)
+		fmt.Printf("tiptables v%s\n", version)
 		return
 	}
 
