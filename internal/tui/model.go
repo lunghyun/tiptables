@@ -85,12 +85,26 @@ func New(cfg Config) *Model {
 	ti.CharLimit = 300
 	ti.Width = 80
 
+	client := iptables.NewMockClient()
+	var cmdHistory []string
+
+	// Load previous session if available
+	if session, err := iptables.LoadSession(); err == nil && session != nil {
+		if session.State != nil {
+			client.SetState(session.State)
+		}
+		if len(session.CmdHistory) > 0 {
+			cmdHistory = session.CmdHistory
+		}
+	}
+
 	lessons := study.All()
 	m := &Model{
-		client:     iptables.NewMockClient(),
+		client:     client,
 		input:      ti,
 		activeTab:  tabRules,
 		historyPos: -1,
+		cmdHistory: cmdHistory,
 		st: &studyState{
 			lessons:    lessons,
 			lessonIdx:  0,
@@ -126,10 +140,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// saveAndQuit persists the current session to disk and returns tea.Quit.
+func (m *Model) saveAndQuit() (tea.Model, tea.Cmd) {
+	iptables.SaveSession(m.client.GetState(), m.cmdHistory) //nolint:errcheck
+	return m, tea.Quit
+}
+
 func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// Quit
+	// Quit — ctrl+c always, q when input is empty
 	if msg.String() == "ctrl+c" {
-		return m, tea.Quit
+		return m.saveAndQuit()
+	}
+	if msg.String() == "q" && m.input.Value() == "" {
+		return m.saveAndQuit()
 	}
 
 	// Help overlay toggle
@@ -144,27 +167,21 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Tab switching with number keys or Tab (when input is empty)
-	if !m.input.Focused() {
+	// Tab switching with number keys (when input is empty)
+	if m.input.Value() == "" {
 		switch msg.String() {
 		case "1":
 			m.activeTab = tabRules
-			m.input.Focus()
-			return m, textinput.Blink
+			return m, nil
 		case "2":
 			m.activeTab = tabHistory
-			m.input.Focus()
-			return m, textinput.Blink
+			return m, nil
 		case "3":
 			m.activeTab = tabConf
-			m.input.Focus()
-			return m, textinput.Blink
+			return m, nil
 		case "4":
 			m.activeTab = tabStudy
-			m.input.Focus()
-			return m, textinput.Blink
-		case "q":
-			return m, tea.Quit
+			return m, nil
 		}
 	}
 

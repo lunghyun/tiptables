@@ -172,3 +172,57 @@ func TestStateToSave(t *testing.T) {
 		}
 	}
 }
+
+func TestSessionSaveLoad(t *testing.T) {
+	// 1. 규칙 추가 후 저장
+	c := iptables.NewMockClient()
+	c.Execute("iptables -A INPUT -p tcp --dport 22 -j ACCEPT")
+	c.Execute("iptables -A INPUT -p tcp --dport 80 -j ACCEPT")
+	c.Execute("iptables -P INPUT DROP")
+	c.Execute("iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE")
+
+	history := []string{
+		"iptables -A INPUT -p tcp --dport 22 -j ACCEPT",
+		"iptables -A INPUT -p tcp --dport 80 -j ACCEPT",
+	}
+
+	if err := iptables.SaveSession(c.GetState(), history); err != nil {
+		t.Fatalf("저장 실패: %v", err)
+	}
+
+	// 2. 다시 로드
+	session, err := iptables.LoadSession()
+	if err != nil {
+		t.Fatalf("로드 실패: %v", err)
+	}
+	if session == nil {
+		t.Fatal("세션이 nil")
+	}
+
+	// 3. 상태 복원 후 검증
+	c2 := iptables.NewMockClient()
+	c2.SetState(session.State)
+
+	filter := c2.GetState().Tables[iptables.TableFilter]
+	input := filter.Chains["INPUT"]
+
+	if input.Policy != "DROP" {
+		t.Errorf("정책 복원 실패: expected DROP, got %s", input.Policy)
+	}
+	if len(input.Rules) != 2 {
+		t.Errorf("규칙 복원 실패: expected 2 rules, got %d", len(input.Rules))
+	}
+
+	nat := c2.GetState().Tables[iptables.TableNAT]
+	post := nat.Chains["POSTROUTING"]
+	if len(post.Rules) != 1 || post.Rules[0].Target != "MASQUERADE" {
+		t.Error("NAT 규칙 복원 실패")
+	}
+
+	// 4. 명령어 히스토리 복원 검증
+	if len(session.CmdHistory) != 2 {
+		t.Errorf("히스토리 복원 실패: expected 2, got %d", len(session.CmdHistory))
+	}
+
+	t.Logf("세션 저장/복원 성공: 규칙 %d개, 히스토리 %d개", len(input.Rules), len(session.CmdHistory))
+}
