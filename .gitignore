@@ -1,0 +1,14 @@
+# 빌드 결과물
+iptables-lab
+iptables-lab-*
+dist/
+
+# Go 빌드 캐시
+*.test
+*.out
+
+# 에디터
+.vscode/
+.idea/
+*.swp
+*.swo
