@@ -1,4 +1,4 @@
-# iptables-lab
+# tiptables
 
 iptables를 루트 권한 없이 배울 수 있는 인터랙티브 터미널 학습 도구입니다.  
 메모리 시뮬레이터 위에서 실제 `iptables` 명령어를 실행하고, 변경 내용을 실시간으로 시각화합니다.
@@ -55,9 +55,9 @@ go build -o tiptables .
 ## 사용법
 
 ```bash
-./iptables-lab           # 시작 (Rules 탭)
-./iptables-lab -study    # 학습 모드로 바로 시작
-./iptables-lab -help     # 도움말
+./tiptables           # 시작 (Rules 탭)
+./tiptables -study    # 학습 모드로 바로 시작
+./tiptables -help     # 도움말
 ```
 
 ### 키보드 단축키
@@ -92,7 +92,7 @@ iptables -L
 ## 프로젝트 구조
 
 ```
-iptables-lab/
+tiptables/
 ├── main.go
 ├── internal/
 │   ├── iptables/
